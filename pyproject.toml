@@ -1,0 +1,39 @@
+[project]
+name = "botkit-membership"
+version = "0.1.0"
+description = "Telegram bot for paid membership communities"
+requires-python = ">=3.12"
+dependencies = [
+    "aiogram>=3.30",
+    "aiosqlite>=0.20",
+    "sqlalchemy[asyncio]>=2.0",
+    "redis>=5.0",
+    "aiohttp>=3.9",
+    "pydantic-settings>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5",
+    "ruff>=0.5",
+    "mypy>=1.10",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "--cov=src --cov-report=term-missing --cov-fail-under=90"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
