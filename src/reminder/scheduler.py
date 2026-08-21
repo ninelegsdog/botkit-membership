@@ -21,7 +21,11 @@ async def expiration_loop(db: Database, bot: Bot, grace_days: int = 3, interval:
             expiring = await service.get_expiring_subscriptions(db, days_ahead=3)
             for sub in expiring:
                 try:
-                    await bot.send_message(int(str(sub["user_id"])), f"⏰ Подписка истекает {str(sub['end_at'])[:10]}.\nПродлите, чтобы не потерять доступ.")
+                    msg = (
+                        f"⏰ Подписка истекает {str(sub['end_at'])[:10]}.\n"
+                        f"Продлите, чтобы не потерять доступ."
+                    )
+                    await bot.send_message(int(str(sub["user_id"])), msg)
                 except Exception as e:
                     logger.warning("Failed to remind user %s: %s", sub["user_id"], e)
         except Exception as e:
