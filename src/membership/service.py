@@ -121,14 +121,25 @@ async def get_expiring_subscriptions(db: Database, days_ahead: int = 3) -> list[
     async with db.session() as conn:
         result = await conn.execute(
             text(
-                "SELECT s.user_id, s.end_at, p.name as plan_name "
+                "SELECT s.id, s.user_id, s.end_at, p.name as plan_name "
                 "FROM subscriptions s JOIN plans p ON s.plan_id = p.id "
                 "WHERE s.status = 'active' AND s.end_at <= :cutoff "
+                "AND s.renewal_reminded_at IS NULL "
                 "ORDER BY s.end_at"
             ),
             {"cutoff": cutoff},
         )
         return [dict(row._mapping) for row in result.all()]
+
+
+async def mark_renewal_reminded(db: Database, subscription_id: int) -> None:
+    async with db.transaction() as conn:
+        await conn.execute(
+            text(
+                "UPDATE subscriptions SET renewal_reminded_at = :now WHERE id = :sid"
+            ),
+            {"now": datetime.now().isoformat(), "sid": subscription_id},
+        )
 
 
 async def expire_subscriptions(db: Database, grace_days: int) -> int:

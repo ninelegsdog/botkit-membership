@@ -17,7 +17,7 @@ async def expiration_loop(db: Database, bot: Bot, grace_days: int = 3, interval:
             if expired:
                 logger.info("Expired %d subscriptions", expired)
 
-            # Remind expiring
+            # Remind expiring (once per subscription)
             expiring = await service.get_expiring_subscriptions(db, days_ahead=3)
             for sub in expiring:
                 try:
@@ -26,6 +26,7 @@ async def expiration_loop(db: Database, bot: Bot, grace_days: int = 3, interval:
                         f"Продлите, чтобы не потерять доступ."
                     )
                     await bot.send_message(int(str(sub["user_id"])), msg)
+                    await service.mark_renewal_reminded(db, int(str(sub["id"])))
                 except Exception as e:
                     logger.warning("Failed to remind user %s: %s", sub["user_id"], e)
         except Exception as e:

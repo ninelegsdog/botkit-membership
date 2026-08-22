@@ -79,6 +79,15 @@ MIGRATION = Migration(
     ),
 )
 
+RENEWAL_MIGRATION = Migration(
+    version=2,
+    name="renewal_reminded_at",
+    statements=(
+        "ALTER TABLE subscriptions ADD COLUMN renewal_reminded_at TEXT",
+    ),
+)
+
 
 def register_migrations(registry: MigrationRegistry) -> None:
     registry.add(MIGRATION)
+    registry.add(RENEWAL_MIGRATION)

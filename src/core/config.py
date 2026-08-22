@@ -10,7 +10,8 @@ class Settings(BaseSettings):
     yookassa_secret_key: str = ""
     webhook_secret_token: str = ""
     webhook_url: str = ""
-    metrics_port: int = 8080
+    metrics_port: int = 8085
+    sentry_dsn: str = ""
     timezone: str = "Europe/Moscow"
     trial_days: int = 3
     grace_days: int = 3
