@@ -2,6 +2,8 @@ version: "3.8"
 services:
   bot:
     image: botkit-membership:1.0.0
+    ports:
+      - "127.0.0.1:8085:8085"
     build: .
     restart: unless-stopped
     env_file: .env
