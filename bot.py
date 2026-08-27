@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import signal
 
 from src.app import collect_routers
@@ -69,10 +70,8 @@ async def main() -> None:
         ])
     finally:
         expiration_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await expiration_task
-        except asyncio.CancelledError:
-            pass
         await dp.stop_polling()
         await bot.session.close()
         await runner.cleanup()
