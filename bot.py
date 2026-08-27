@@ -1,4 +1,5 @@
 import asyncio
+import signal
 
 from src.app import collect_routers
 from src.core.auth import AdminGate
@@ -27,13 +28,14 @@ async def main() -> None:
     db = Database(settings.database_url)
     await db.init_database(registry)
 
-    gate = AdminGate(settings.admin_password)
+    gate = AdminGate(settings.admin_password, settings.admin_ids)
     routers = collect_routers(gate=gate, nav=nav, db=db, trial_days=settings.trial_days)
 
     dp = build_dispatcher(
         routers=routers,
         storage=create_storage(settings.redis_url),
         throttling=ThrottlingMiddleware(
+            redis_url=settings.redis_url,
             rate_limit=settings.throttle_rate_limit,
             max_idle=settings.throttle_max_idle,
         ),
@@ -46,13 +48,33 @@ async def main() -> None:
     # Start expiration scheduler
     from src.reminder.scheduler import expiration_loop
 
-    asyncio.create_task(expiration_loop(db, bot, grace_days=settings.grace_days))
+    expiration_task = asyncio.create_task(expiration_loop(db, bot, grace_days=settings.grace_days))
 
     await bot.delete_webhook(drop_pending_updates=True)
     runner = await start_metrics_server(settings.metrics_port)
+
+    shutdown_event = asyncio.Event()
+
+    def _signal_handler() -> None:
+        shutdown_event.set()
+
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, _signal_handler)
+
     try:
-        await dp.start_polling(bot)
+        await asyncio.wait([
+            asyncio.create_task(dp.start_polling(bot)),
+            asyncio.create_task(shutdown_event.wait()),
+        ])
     finally:
+        expiration_task.cancel()
+        try:
+            await expiration_task
+        except asyncio.CancelledError:
+            pass
+        await dp.stop_polling()
+        await bot.session.close()
         await runner.cleanup()
 
 
