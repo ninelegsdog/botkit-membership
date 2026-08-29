@@ -143,7 +143,14 @@ async def test_health_and_metrics():
     assert resp.status in (200, 500)
     assert resp.text in ("ok", "db unavailable")
     resp = await metrics.metrics(MagicMock())
-    assert resp.body == metrics.generate_latest()
+
+    def _bot_metrics(body: bytes) -> set[str]:
+        # Compare only the bot-specific counters. Prometheus process/python
+        # gauges (process_start_time_seconds, python_gc_*, etc.) are sampled
+        # at collection time and differ between calls, so they are excluded.
+        return {line for line in body.decode().splitlines() if line.startswith("bot_")}
+
+    assert _bot_metrics(resp.body) == _bot_metrics(metrics.generate_latest())
 
 
 def test_create_metrics_app():
