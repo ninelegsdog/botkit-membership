@@ -26,7 +26,7 @@ def test_settings_valid(monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
     monkeypatch.setenv("ADMIN_PASSWORD", "pw")
     monkeypatch.setenv("ADMIN_IDS", "[1,2]")
-    s = Settings()
+    s = Settings(_env_file=None)
     assert s.bot_token == "tok"
     assert s.admin_ids == [1, 2]
     assert s.metrics_port == 8085
@@ -40,7 +40,7 @@ def test_settings_missing_required(var, monkeypatch):
     monkeypatch.delenv("ADMIN_PASSWORD", raising=False)
     monkeypatch.delenv("ADMIN_IDS", raising=False)
     with pytest.raises(RuntimeError):
-        Settings()
+        Settings(_env_file=None)
 
 
 # ---------- fsm ----------
