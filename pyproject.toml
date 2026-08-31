@@ -36,7 +36,7 @@ e2e = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "-ra --strict-markers --cov=src --cov-branch --cov-report=term-missing --cov-fail-under=64"
+addopts = "-ra --strict-markers --cov=src --cov-branch --cov-report=term-missing --cov-fail-under=70"
 filterwarnings = ["error::DeprecationWarning"]
 markers = [
     "no_req: fully offline, no external HTTP/Telegram requests",
