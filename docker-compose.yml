@@ -21,6 +21,15 @@ services:
         condition: service_healthy
     networks:
       - botnet
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+          pids: 100
+        reservations:
+          cpus: "0.1"
+          memory: 64M
 
   redis:
     image: redis:7-alpine
