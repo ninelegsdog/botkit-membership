@@ -21,6 +21,7 @@ from src.core.navigation import NavRegistry
 from src.core.sentry import init_sentry
 from src.core.storage import create_storage
 from src.core.throttling import ThrottlingMiddleware
+from src.core.tracing import TracingMiddleware, setup_tracing
 from src.core.webhook import build_webhook_app
 
 logger = logging.getLogger(__name__)
@@ -102,6 +103,7 @@ async def _run_polling(
 async def main() -> None:
     settings = Settings()
     setup_logging(level="INFO", json=True, bot_name="membership")
+    setup_tracing(service_name="membership")
     init_sentry(settings.sentry_dsn)
     registry = MigrationRegistry()
 
@@ -126,6 +128,7 @@ async def main() -> None:
         ),
     )
     dp.update.outer_middleware(LoggingMiddleware())
+    dp.update.outer_middleware(TracingMiddleware())
     dp.update.outer_middleware(UpdatesMiddleware())
     dp.message.middleware(RetryMiddleware())
     register_error_handler(dp)
