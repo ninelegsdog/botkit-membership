@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 try:
-    import yookassa
+    import yookassa  # noqa: F401
 
     HAS_YOOKASSA = True
 except ImportError:
