@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import sys
-from collections.abc import Awaitable, Callable
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -14,19 +11,15 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import Chat, Message, PreCheckoutQuery, User
 
 from src.core.auth import AdminGate
-from src.core.database import Database
-from src.core.errors import RetryMiddleware, default_error_handler, register_error_handler
+from src.core.navigation import NavRegistry, NavSection
 from src.core.payments import (
+    STARS_CURRENCY,
     MockPaymentProvider,
     PaymentProvider,
     YooKassaPaymentProvider,
     attach_payment_handlers,
     create_payment_provider,
-    STARS_CURRENCY,
 )
-from src.core.sentry import init_sentry
-from src.core.throttling import ThrottlingMiddleware
-from src.core.navigation import NavRegistry, NavSection
 
 
 @pytest.fixture
@@ -241,7 +234,7 @@ def test_mock_provider_create_payment() -> None:
 
 def test_mock_provider_check_payment() -> None:
     provider = MockPaymentProvider()
-    asyncio.run(provider.check_payment("any")) is True
+    assert asyncio.run(provider.check_payment("any")) is True
 
 
 def test_yookassa_provider_instantiation() -> None:

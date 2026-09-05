@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -439,7 +439,7 @@ class TestRequireAdmin:
     def _real_message(uid: int) -> Message:
         return Message(
             message_id=1,
-            date=datetime.now(timezone.utc),
+            date=datetime.now(UTC),
             chat=Chat(id=1, type="private"),
             from_user=_user(uid),
             text="x",
