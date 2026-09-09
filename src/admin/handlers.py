@@ -1,3 +1,5 @@
+from typing import cast
+
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -91,10 +93,10 @@ def create_router(*, gate: AdminGate, nav: object, db: Database) -> Router:
         else:
             lines: list[str] = []
             for s in sections:
-                items = await get_content_items(db, int(s['id']))
+                items = await get_content_items(db, cast(int, s["id"]))
                 lines.append(f"• {s['title']} — {len(items)} шт.")
             text = "📚 Разделы контента:\n" + "\n".join(lines)
-        await callback.message.edit_text(text)
+        await callback.message.edit_text(text)  # type: ignore[union-attr]
         await callback.answer()
 
     @admin.callback_query(F.data == "adm:polls")
@@ -108,18 +110,18 @@ def create_router(*, gate: AdminGate, nav: object, db: Database) -> Router:
         else:
             lines: list[str] = []
             for p in polls:
-                results = await get_poll_results(db, int(p['id']))
+                results = await get_poll_results(db, cast(int, p["id"]))
                 summary = ", ".join(f"{r['option']}: {r['votes']}" for r in results)
                 lines.append(f"• {p['question']} ({summary or 'нет голосов'})")
             text = "📊 Опросы:\n" + "\n".join(lines)
-        await callback.message.edit_text(text)
+        await callback.message.edit_text(text)  # type: ignore[union-attr]
         await callback.answer()
 
     @admin.callback_query(F.data == "adm:broadcast")
     @require_admin(gate)
     async def broadcast_start(callback: CallbackQuery, state: FSMContext) -> None:
         await state.set_state(AdminStates.waiting_broadcast_text)
-        await callback.message.edit_text("📣 Введите текст рассылки (одно сообщение):")
+        await callback.message.edit_text("📣 Введите текст рассылки (одно сообщение):")  # type: ignore[union-attr]
         await callback.answer()
 
     @admin.message(AdminStates.waiting_broadcast_text, text_not_command)
@@ -137,7 +139,7 @@ def create_router(*, gate: AdminGate, nav: object, db: Database) -> Router:
         failed = 0
         for s in subscribers:
             try:
-                await message.bot.send_message(int(s['user_id']), f"📣 {text}")
+                await message.bot.send_message(cast(int, s["user_id"]), f"📣 {text}")  # type: ignore[union-attr]
                 ok += 1
             except Exception:
                 failed += 1
