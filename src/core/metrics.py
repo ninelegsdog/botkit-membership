@@ -22,6 +22,8 @@ from src.core.database import Database
 
 logger = logging.getLogger(__name__)
 
+_BUILD_SHA = os.getenv("BUILD_SHA", "unknown")
+
 _db: Database | None = None
 
 
@@ -55,9 +57,11 @@ async def health(request: web.Request) -> web.Response:
             db = _get_db()
             async with db.session() as session:
                 await session.execute(text("SELECT 1"))
-            return web.json_response({"status": "ok", "version": _core_version})
+            return web.json_response({"status": "ok", "version": _core_version, "commit": _BUILD_SHA})
         except Exception:
-            return web.json_response({"status": "db unavailable", "version": _core_version}, status=500)
+            return web.json_response(
+                {"status": "db unavailable", "version": _core_version, "commit": _BUILD_SHA}, status=500
+            )
     try:
         db = _get_db()
         async with db.session() as session:
@@ -68,7 +72,7 @@ async def health(request: web.Request) -> web.Response:
 
 
 async def version(request: web.Request) -> web.Response:
-    return web.json_response({"version": _core_version, "service": "botkit"})
+    return web.json_response({"version": _core_version, "service": "botkit", "commit": _BUILD_SHA})
 
 
 async def metrics(request: web.Request) -> web.Response:
