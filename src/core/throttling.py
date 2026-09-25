@@ -26,7 +26,7 @@ class ThrottlingMiddleware(BaseMiddleware):
         last = self._local_cache.get(user_id, 0)
         if now - last < self._rate_limit:
             try:
-                redis_last = await self._redis.get(f"throttle:{user_id}")
+                redis_last = await self._redis.get(f"throttle:membership:{user_id}")
                 if redis_last and now - float(redis_last) < self._rate_limit:
                     return None
             except Exception:
@@ -34,5 +34,5 @@ class ThrottlingMiddleware(BaseMiddleware):
 
         self._local_cache[user_id] = now
         with contextlib.suppress(Exception):
-            await self._redis.set(f"throttle:{user_id}", str(now), ex=int(self._max_idle))
+            await self._redis.set(f"throttle:membership:{user_id}", str(now), ex=int(self._max_idle))
         return await handler(event, data)
