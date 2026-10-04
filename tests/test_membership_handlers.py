@@ -16,6 +16,7 @@ from aiogram.types import Chat, Message, User
 from src.admin.handlers import create_router as create_admin_router
 from src.core.auth import ADMIN_GATE_ATTR, AdminGate, mark_admin_router, require_admin
 from src.core.navigation import NavRegistry
+from src.membership.handlers import ContentStates
 from src.membership.handlers import create_router as create_membership_router
 
 
@@ -105,6 +106,16 @@ class TestMembershipPublicHandlers:
         msg.answer.assert_awaited_once()
         _, kwargs = msg.answer.await_args
         assert "reply_markup" in kwargs
+
+    async def test_start_clears_fsm_state(self, gate, nav, db, fsm):
+        """/start посреди сценария обязан сбросить состояние."""
+        router = create_membership_router(gate=gate, nav=nav, db=db, trial_days=3)
+        await fsm.set_state(ContentStates.waiting_text)
+        assert await fsm.get_state() is not None
+        handler = _find(router, "message", "start")
+        with patch("src.membership.service.ensure_subscriber", new=AsyncMock()):
+            await handler(_make_message(uid=456), fsm)
+        assert await fsm.get_state() is None
 
     async def test_list_plans_empty(self, gate, nav, db):
         router = create_membership_router(gate=gate, nav=nav, db=db)
