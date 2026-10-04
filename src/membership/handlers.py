@@ -2,6 +2,7 @@ import json
 
 from aiogram import F, Router
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
@@ -25,7 +26,8 @@ def create_router(
     admin = mark_admin_router(Router(name="membership_admin"))
 
     @public.message(Command("start"))
-    async def start(message: Message) -> None:
+    async def start(message: Message, state: FSMContext) -> None:
+        await state.clear()
         from src.membership.service import ensure_subscriber
 
         await ensure_subscriber(

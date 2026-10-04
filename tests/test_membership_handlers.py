@@ -95,12 +95,12 @@ def fsm() -> FSMContext:
 
 class TestMembershipPublicHandlers:
 
-    async def test_start_registers_subscriber(self, gate, nav, db):
+    async def test_start_registers_subscriber(self, gate, nav, db, fsm):
         router = create_membership_router(gate=gate, nav=nav, db=db, trial_days=3)
         handler = _find(router, "message", "start")
         msg = _make_message(uid=456)
         with patch("src.membership.service.ensure_subscriber", new=AsyncMock()) as mock_ensure:
-            await handler(msg)
+            await handler(msg, fsm)
             mock_ensure.assert_awaited_once()
         msg.answer.assert_awaited_once()
         _, kwargs = msg.answer.await_args
