@@ -50,7 +50,8 @@ python -m bot
 pytest
 ```
 
-163 теста в 24 файлах.
+[![CI](https://github.com/ninelegsdog/botkit-membership/actions/workflows/ci.yml/badge.svg)](https://github.com/ninelegsdog/botkit-membership/actions/workflows/ci.yml)
+Число тестов не дублируется в README вручную — актуальный прогон смотрите в CI (бейдж выше).
 
 ## Бэкапы
 
