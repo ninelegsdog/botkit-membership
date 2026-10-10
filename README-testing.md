@@ -80,7 +80,7 @@ If a session string leaks, revoke the Telegram session immediately and regenerat
 
 ## Coverage target
 
-Current gate: `fail_under = 64` (branch). Documented target is **80%**; raise it as
+Current gate: `--cov-fail-under=90` в `pyproject.toml` (branch). Documented target is **80%**; raise it as
 more business-logic tests land (membership/admin handlers are currently the main gaps).
 
 ## Known limitations
