@@ -160,7 +160,16 @@ async def test_attach_payment_handlers():
     async def on_confirmed(payload: str) -> None:
         confirmed["payload"] = payload
 
-    attach_payment_handlers(router, provider, on_confirmed=on_confirmed)
+    # Declare what we are willing to approve. Without this core#8 refuses the
+    # pre_checkout outright rather than approving it, which is correct - and is exactly how
+    # the suite caught the undeclared gate.
+    attach_payment_handlers(
+        router,
+        provider,
+        on_confirmed=on_confirmed,
+        expected_payloads={"payload123"},
+        expected_amount=100,
+    )
 
     query = MagicMock(spec=PreCheckoutQuery)
     query.answer = AsyncMock()
@@ -271,3 +280,59 @@ def test_mock_provider_verify_payment_false() -> None:
 def test_stars_currency_constant() -> None:
     assert STARS_CURRENCY == "XTR"
 
+
+
+@pytest.mark.asyncio
+async def test_attach_payment_handlers_refuses_when_nothing_is_declared():
+    """Declaring no expectation must refuse, not approve.
+
+    This is the property that broke bookingbot's deposits when core#8 landed: a caller that
+    forgets to say what it sells gets a refusal instead of a blank approval. Refusing costs a
+    deposit that was configured wrongly; approving would accept a forged one.
+    """
+    router = Router()
+    attach_payment_handlers(router, MockPaymentProvider())
+
+    query = MagicMock(spec=PreCheckoutQuery)
+    query.answer = AsyncMock()
+    query.id = "q1"
+    query.from_user = MagicMock()
+    query.from_user.id = 1
+    query.currency = "XTR"
+    query.total_amount = 100
+    query.invoice_payload = "payload123"
+
+    for handler in router.pre_checkout_query.handlers:
+        await handler.callback(query)
+
+    query.answer.assert_awaited_once_with(
+        ok=False, error_message="Покупка не настроена"
+    )
+
+
+@pytest.mark.asyncio
+async def test_attach_payment_handlers_refuses_an_amount_it_did_not_expect():
+    """A declared gate still has to hold: 50 must not pass a 100 gate."""
+    router = Router()
+    attach_payment_handlers(
+        router,
+        MockPaymentProvider(),
+        expected_payloads={"payload123"},
+        expected_amount=100,
+    )
+
+    query = MagicMock(spec=PreCheckoutQuery)
+    query.answer = AsyncMock()
+    query.id = "q1"
+    query.from_user = MagicMock()
+    query.from_user.id = 1
+    query.currency = "XTR"
+    query.total_amount = 50
+    query.invoice_payload = "payload123"
+
+    for handler in router.pre_checkout_query.handlers:
+        await handler.callback(query)
+
+    query.answer.assert_awaited_once_with(
+        ok=False, error_message="Неверная сумма"
+    )
