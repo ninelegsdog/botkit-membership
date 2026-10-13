@@ -7,6 +7,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from src.core.auth import AdminGate, mark_admin_router
+from src.core.callbacks import parse_callback_int
 from src.core.database import Database
 from src.core.navigation import NavRegistry, compose_message
 
@@ -72,7 +73,10 @@ def create_router(
     async def select_plan(callback: CallbackQuery) -> None:
         if not callback.data:
             return
-        plan_id = int(callback.data.split(":")[2])
+        plan_id = parse_callback_int(callback.data, "mem:plan:")
+        if plan_id is None:
+            await callback.answer("Некорректный запрос.", show_alert=True)
+            return
         plan = await service.get_plan(db, plan_id)
         if not plan:
             await callback.answer("Тариф не найден.", show_alert=True)
@@ -95,7 +99,10 @@ def create_router(
     async def subscribe(callback: CallbackQuery) -> None:
         if not callback.data:
             return
-        plan_id = int(callback.data.split(":")[2])
+        plan_id = parse_callback_int(callback.data, "mem:subscribe:")
+        if plan_id is None:
+            await callback.answer("Некорректный запрос.", show_alert=True)
+            return
         plan = await service.get_plan(db, plan_id)
         if not plan:
             await callback.answer("Тариф не найден.", show_alert=True)
@@ -145,7 +152,10 @@ def create_router(
     async def view_section(callback: CallbackQuery) -> None:
         if not callback.data:
             return
-        section_id = int(callback.data.split(":")[2])
+        section_id = parse_callback_int(callback.data, "mem:section:")
+        if section_id is None:
+            await callback.answer("Некорректный запрос.", show_alert=True)
+            return
         items = await service.get_content_items(db, section_id)
         if not items:
             await callback.message.edit_text("В разделе пока нет контента.")  # type: ignore
@@ -214,7 +224,10 @@ def create_router(
     async def view_poll(callback: CallbackQuery) -> None:
         if not callback.data:
             return
-        poll_id = int(callback.data.split(":")[2])
+        poll_id = parse_callback_int(callback.data, "mem:poll:")
+        if poll_id is None:
+            await callback.answer("Некорректный запрос.", show_alert=True)
+            return
         polls = await service.get_active_polls(db)
         poll = next((p for p in polls if p["id"] == poll_id), None)
         if not poll:
