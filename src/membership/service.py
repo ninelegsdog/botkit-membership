@@ -32,23 +32,32 @@ async def ensure_subscriber(db: Database, user_id: int, name: str, username: str
         )
 
 
-async def get_subscription(db: Database, user_id: int) -> dict[str, object] | None:
+async def get_subscription(
+    db: Database, user_id: int, grace_days: int = 3
+) -> dict[str, object] | None:
+    # F4: доступ определяется данными, а не тем, успел ли фоновый цикл
+    # переписать status: end_at дальше grace_days назад закрывает вход
+    # синхронно, при самом чтении. Хвост grace_days остаётся рабочим
+    # (продуктова семантика grace не меняется) — меняется определённость:
+    # момент закрытия задан датой, а не живостью expiration_loop.
+    cutoff = (datetime.now() - timedelta(days=grace_days)).isoformat()
     async with db.session() as conn:
         result = await conn.execute(
             text(
                 "SELECT s.*, p.name as plan_name, p.period_days "
                 "FROM subscriptions s JOIN plans p ON s.plan_id = p.id "
                 "WHERE s.user_id = :uid AND s.status IN ('active', 'trial', 'grace') "
+                "AND s.end_at > :cutoff "
                 "ORDER BY s.end_at DESC LIMIT 1"
             ),
-            {"uid": user_id},
+            {"uid": user_id, "cutoff": cutoff},
         )
         row = result.first()
         return dict(row._mapping) if row else None
 
 
-async def is_subscriber(db: Database, user_id: int) -> bool:
-    sub = await get_subscription(db, user_id)
+async def is_subscriber(db: Database, user_id: int, grace_days: int = 3) -> bool:
+    sub = await get_subscription(db, user_id, grace_days)
     return sub is not None
 
 
@@ -146,15 +155,28 @@ async def expire_subscriptions(db: Database, grace_days: int) -> int:
     now = datetime.now()
     grace_cutoff = (now - timedelta(days=grace_days)).isoformat()
     async with db.transaction() as conn:
-        # Active → grace (past end_at)
+        # Active/trial → grace (past end_at, но внутри grace-окна).
+        # F4: раньше брался только 'active' — триал никогда не доходил до
+        # 'expired' и висел активным вечно.
         result = await conn.execute(
             text(
                 "UPDATE subscriptions SET status = 'grace' "
-                "WHERE status = 'active' AND end_at < :now AND end_at > :grace"
+                "WHERE status IN ('active', 'trial') AND end_at < :now AND end_at > :grace"
             ),
             {"now": now.isoformat(), "grace": grace_cutoff},
         )
         grace_count = int(result.rowcount or 0)  # type: ignore[attr-defined]
+
+        # Active/trial с датой глубоко позади grace-окна (в него не попали,
+        # значит из grace сами не придут) — сразу в expired.
+        result3 = await conn.execute(
+            text(
+                "UPDATE subscriptions SET status = 'expired' "
+                "WHERE status IN ('active', 'trial') AND end_at <= :grace"
+            ),
+            {"grace": grace_cutoff},
+        )
+        deep_count = int(result3.rowcount or 0)  # type: ignore[attr-defined]
 
         # Grace → expired (past grace period)
         result2 = await conn.execute(
@@ -163,7 +185,7 @@ async def expire_subscriptions(db: Database, grace_days: int) -> int:
         )
         expired_count = int(result2.rowcount or 0)  # type: ignore[attr-defined]
 
-        return grace_count + expired_count
+        return grace_count + deep_count + expired_count
 
 
 async def get_content_sections(db: Database) -> list[dict[str, object]]:

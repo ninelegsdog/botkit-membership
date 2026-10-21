@@ -20,7 +20,7 @@ class ContentStates(StatesGroup):
 
 
 def create_router(
-    *, gate: AdminGate, nav: NavRegistry, db: Database, trial_days: int = 3
+    *, gate: AdminGate, nav: NavRegistry, db: Database, trial_days: int = 3, grace_days: int = 3
 ) -> Router:
     nav.register(NAV_SECTION)
     public = Router(name="membership")
@@ -118,7 +118,7 @@ def create_router(
 
     @public.callback_query(F.data == "mem:content")
     async def list_content(callback: CallbackQuery) -> None:
-        if not await service.is_subscriber(db, callback.from_user.id):
+        if not await service.is_subscriber(db, callback.from_user.id, grace_days):
             await callback.message.edit_text(  # type: ignore
                 "🔒 Это для участников клуба.\nОформите подписку в разделе ⭐ Тарифы.",
                 reply_markup=InlineKeyboardMarkup(
@@ -167,7 +167,7 @@ def create_router(
 
     @public.callback_query(F.data == "mem:my")
     async def my_subscription(callback: CallbackQuery) -> None:
-        sub = await service.get_subscription(db, callback.from_user.id)
+        sub = await service.get_subscription(db, callback.from_user.id, grace_days)
         if not sub:
             kb_empty = InlineKeyboardMarkup(
                 inline_keyboard=[
