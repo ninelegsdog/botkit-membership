@@ -544,3 +544,39 @@ class TestAdminGate:
         assert gate.is_admin(1) is False
         gate.deauthorize(1)
         assert gate.is_admin(1) is False
+
+async def test_subscribe_prod_creates_invoice(gate, nav, db):
+    from unittest.mock import MagicMock
+
+    provider = MagicMock()
+    provider.create_invoice_link = AsyncMock(return_value="https://pay.example/invoice")
+    router = create_membership_router(gate=gate, nav=nav, db=db, payments=provider)
+    handler = _find(router, "callback_query", "subscribe")
+    cb = _make_callback("mem:subscribe:1")
+    plan = {"id": 1, "name": "Basic", "price": 100, "period_days": 30}
+    with patch("src.membership.service.get_plan", new=AsyncMock(return_value=plan)):
+        await handler(cb)
+    cb.message.edit_text.assert_awaited()
+    args, kwargs = cb.message.edit_text.await_args
+    assert "Оплатите" in (args[0] if args else "")
+
+
+async def test_on_paid_activates_subscription(gate, nav, db):
+    router = create_membership_router(gate=gate, nav=nav, db=db)
+    on_paid = None
+    for h in router.message.handlers:
+        if getattr(h.callback, "__name__", "") == "on_paid":
+            on_paid = h.callback
+            break
+    assert on_paid is not None
+    msg = _make_message(uid=456)
+    sp = MagicMock()
+    sp.invoice_payload = "sub:1"
+    sp.total_amount = 100
+    sp.telegram_payment_charge_id = "charge-1"
+    msg.successful_payment = sp
+    plan = {"id": 1, "name": "Basic", "price": 100, "period_days": 30}
+    with patch("src.membership.service.get_plan", new=AsyncMock(return_value=plan)), \
+         patch("src.membership.service.activate_subscription", new=AsyncMock(return_value=7)) as mock_act:
+        await on_paid(msg)
+        mock_act.assert_awaited_once()
