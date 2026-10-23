@@ -20,7 +20,8 @@ class ContentStates(StatesGroup):
 
 
 def create_router(
-    *, gate: AdminGate, nav: NavRegistry, db: Database, trial_days: int = 3
+    *, gate: AdminGate, nav: NavRegistry, db: Database, trial_days: int = 3,
+    payments: object | None = None,
 ) -> Router:
     nav.register(NAV_SECTION)
     public = Router(name="membership")
@@ -108,13 +109,64 @@ def create_router(
             await callback.answer("Тариф не найден.", show_alert=True)
             return
 
-        sub_id = await service.activate_subscription(
-            db, callback.from_user.id, plan_id, int(str(plan["period_days"]))
+        # Демо-режим (mock-провайдер): активация сразу, чтобы витрина работала
+        # без реального платежа. В проде (реальный провайдер) создаётся инвойс,
+        # а активация происходит в обработчике successful_payment.
+        is_demo = payments is None or type(payments).__name__ == "MockPaymentProvider"
+        if is_demo:
+            sub_id = await service.activate_subscription(
+                db, callback.from_user.id, plan_id, int(str(plan["period_days"]))
+            )
+            if sub_id:
+                await callback.answer("Подписка оформлена!", show_alert=True)
+            else:
+                await callback.answer("Ошибка оформления.", show_alert=True)
+            return
+
+        # Прод-режим: создаём инвойс и ждём successful_payment.
+        try:
+            link = await payments.create_invoice_link(  # type: ignore[attr-defined]
+                title=str(plan["name"]),
+                description=f"Подписка «{plan['name']}»",
+                payload=f"sub:{plan_id}",
+                amount=int(str(plan["price"])),
+                currency="RUB",
+            )
+        except Exception:
+            await callback.answer("Ошибка создания платежа.", show_alert=True)
+            return
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="💳 Оплатить", url=link)],
+                [InlineKeyboardButton(text="🔙 Назад", callback_data="mem:plans")],
+            ]
         )
-        if sub_id:
-            await callback.answer("Подписка оформлена!", show_alert=True)
-        else:
-            await callback.answer("Ошибка оформления.", show_alert=True)
+        await callback.message.edit_text(  # type: ignore
+            f"📦 {plan['name']}\n💰 {plan['price']}₽ / {plan['period_days']} дней\n\n"
+            f"Оплатите по ссылке, доступ откроется автоматически.",
+            reply_markup=kb,
+        )
+        await callback.answer()
+
+
+    # Активация подписки по успешному платежу (прод-режим). В демо не вызывается,
+    # потому что подписка активируется сразу в subscribe.
+    @public.message(F.successful_payment)
+    async def on_paid(message: Message) -> None:
+        sp = message.successful_payment
+        if sp is None or not str(sp.invoice_payload or "").startswith("sub:"):
+            return
+        try:
+            plan_id = int(str(sp.invoice_payload).split(":", 1)[1])
+        except ValueError:
+            return
+        plan = await service.get_plan(db, plan_id)
+        if not plan:
+            return
+        await service.activate_subscription(
+            db, message.from_user.id, plan_id, int(str(plan["period_days"]))  # type: ignore
+        )
+        await message.answer("Подписка оформлена! Добро пожаловать в клуб.")
 
     @public.callback_query(F.data == "mem:content")
     async def list_content(callback: CallbackQuery) -> None:
