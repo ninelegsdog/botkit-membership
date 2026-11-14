@@ -148,6 +148,20 @@ class TestMembershipPublicHandlers:
             await handler(cb)
         cb.answer.assert_awaited_with("Тариф не найден.", show_alert=True)
 
+    async def test_select_plan_empty_data(self, gate, nav, db):
+        router = create_membership_router(gate=gate, nav=nav, db=db)
+        handler = _find(router, "callback_query", "select_plan")
+        cb = _make_callback("")
+        await handler(cb)
+        cb.answer.assert_not_awaited()
+
+    async def test_select_plan_invalid_id(self, gate, nav, db):
+        router = create_membership_router(gate=gate, nav=nav, db=db)
+        handler = _find(router, "callback_query", "select_plan")
+        cb = _make_callback("mem:plan:abc")
+        await handler(cb)
+        cb.answer.assert_awaited_with("Некорректный запрос.", show_alert=True)
+
     async def test_select_plan_found(self, gate, nav, db):
         router = create_membership_router(gate=gate, nav=nav, db=db)
         handler = _find(router, "callback_query", "select_plan")
