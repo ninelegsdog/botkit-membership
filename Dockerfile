@@ -32,7 +32,7 @@ EOF
 FROM python:3.13-slim AS runtime
 RUN useradd -m -u 1001 botuser
 WORKDIR /app
-COPY --from=builder /usr/local/lib/python* /usr/local/lib/
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --chown=botuser:botuser . .
 USER 1001:1001
