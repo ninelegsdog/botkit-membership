@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.core import bot_factory, errors, fsm, metrics, payments, sentry, storage, throttling, webhook
+from src.core import bot_factory, errors, fsm, metrics, payments, storage, throttling, webhook
 from src.core.config import Settings, parse_admin_ids
 from src.membership import models
 from src.membership.nav import NAV_SECTION
@@ -201,16 +201,6 @@ def test_attach_payment_handlers():
     payments.attach_payment_handlers(router, payments.MockPaymentProvider(), on_confirmed=on_confirmed)
     assert len(router.observers.get("pre_checkout_query").handlers) >= 1
     assert len(router.observers.get("message").handlers) >= 1
-
-
-# ---------- sentry ----------
-def test_init_sentry_none():
-    assert sentry.init_sentry(None) is None
-
-
-def test_init_sentry_no_raise():
-    # should never raise, regardless of whether sentry_sdk is installed
-    sentry.init_sentry("https://example@sentry.io/1")
 
 
 # ---------- bot_factory ----------
