@@ -1,6 +1,6 @@
-FROM python@sha256:f17ec845ebdd4f3347431579e1c22eaeec82913f039f2a54b937c7ff870bacdb AS builder
+FROM python:3.13-slim AS builder
 RUN useradd -m -u 1001 botuser
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends git gcc build-essential && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 # uv is used only to read uv.lock and emit a constraints file. It is deleted again
 # before the layer is sealed, and the runtime stages copy site-packages only, so the
@@ -29,10 +29,10 @@ RUN --mount=type=secret,id=BOTKIT_CORE_TOKEN bash <<'EOF'
     rm -rf /var/lib/apt/lists/*
 EOF
 
-FROM python@sha256:f17ec845ebdd4f3347431579e1c22eaeec82913f039f2a54b937c7ff870bacdb AS runtime
+FROM python:3.13-slim AS runtime
 RUN useradd -m -u 1001 botuser
 WORKDIR /app
-COPY --from=builder /usr/local/lib/python* /usr/local/lib/
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --chown=botuser:botuser . .
 USER 1001:1001
