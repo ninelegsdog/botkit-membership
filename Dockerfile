@@ -1,4 +1,4 @@
-FROM python:3.13-slim AS builder
+FROM python:3.15-slim AS builder
 RUN useradd -m -u 1001 botuser
 RUN apt-get update && apt-get install -y --no-install-recommends git gcc build-essential && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
@@ -29,7 +29,7 @@ RUN --mount=type=secret,id=BOTKIT_CORE_TOKEN bash <<'EOF'
     rm -rf /var/lib/apt/lists/*
 EOF
 
-FROM python:3.13-slim AS runtime
+FROM python:3.15-slim AS runtime
 RUN useradd -m -u 1001 botuser
 WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
